@@ -166,6 +166,8 @@ function loadSettingsFromLocalStorage() {
 }
 
 let pluginInitialized = false; // Flag to prevent multiple initializations
+// Used to make sure the onload-based check only runs once
+let finalCheckPerformed = false;
 
 function performInitialization() {
     if (pluginInitialized) {
@@ -236,4 +238,20 @@ onReady(() => {
     } catch (err) {
         console.error(`[${Constants.EXTENSION_NAME}] 启动失败:`, err);
     }
+
+    // Failsafe: when the window has fully loaded, run a final whitelist DOM check
+    window.addEventListener('load', () => {
+        if (pluginInitialized && !finalCheckPerformed) {
+            console.log(`[${Constants.EXTENSION_NAME}] Window 'load' event fired. Performing final whitelist DOM check as a failsafe.`);
+            setTimeout(() => {
+                if (window.quickReplyMenu && typeof window.quickReplyMenu.applyWhitelistDOMChanges === 'function') {
+                    window.quickReplyMenu.applyWhitelistDOMChanges();
+                    finalCheckPerformed = true;
+                    console.log(`[${Constants.EXTENSION_NAME}] Final whitelist check complete.`);
+                } else {
+                    console.warn(`[${Constants.EXTENSION_NAME}] Could not perform final check: applyWhitelistDOMChanges function not found.`);
+                }
+            }, 500);
+        }
+    });
 });
